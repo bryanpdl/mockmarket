@@ -136,7 +136,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         
         // Apply change with a minimum price floor
         const minPrice = asset.basePrice * 0.2;
-        const maxPrice = asset.basePrice * 5;
+        const maxPrice = asset.basePrice * 10;
         const newPrice = Math.min(maxPrice, Math.max(minPrice, 
           asset.currentPrice * (1 + totalChange)
         ));
