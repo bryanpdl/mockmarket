@@ -39,64 +39,66 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
 
   const renderActiveOrders = () => (
     <div className="space-y-4">
-      {orders.map((order) => {
-        const asset = getAssetDetails(order.assetId);
-        if (!asset) return null;
+      {orders
+        .filter(order => !('status' in order))
+        .map((order) => {
+          const asset = getAssetDetails(order.assetId);
+          if (!asset) return null;
 
-        const totalValue = order.quantity * order.targetPrice;
-        const isPriceReached = order.type === 'buy' 
-          ? asset.currentPrice <= order.targetPrice
-          : asset.currentPrice >= order.targetPrice;
+          const totalValue = order.quantity * order.targetPrice;
+          const isPriceReached = order.type === 'buy' 
+            ? asset.currentPrice <= order.targetPrice
+            : asset.currentPrice >= order.targetPrice;
 
-        return (
-          <div
-            key={order.id}
-            className="bg-[#1C1C1C] p-4 rounded-lg relative overflow-hidden group"
-          >
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.02] transition-opacity duration-300" />
-            
-            <div className="flex justify-between items-start relative z-10">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold">{asset.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    order.type === 'buy'
-                      ? 'bg-[#00B57C]/20 text-[#00B57C]'
-                      : 'bg-[#E71151]/20 text-[#E71151]'
-                  }`}>
-                    {order.type.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-400">
-                  {order.quantity} {asset.symbol} @ ${order.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Total Value: ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              
-              <div className="text-right">
-                <p className="text-sm text-gray-400 mb-1">
-                  Current Price: ${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className={`text-xs ${isPriceReached ? 'text-[#00B57C]' : 'text-gray-500'}`}>
-                  {isPriceReached ? 'Target price reached!' : 'Waiting for target price...'}
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                cancelOrder(order.id);
-              }}
-              className="mt-2 text-sm text-red-400 hover:text-red-300 transition-colors cursor-pointer relative z-10"
+          return (
+            <div
+              key={order.id}
+              className="bg-[#1C1C1C] p-4 rounded-lg relative overflow-hidden group"
             >
-              Cancel Order
-            </button>
-          </div>
-        );
-      })}
+              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.02] transition-opacity duration-300" />
+              
+              <div className="flex justify-between items-start relative z-10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold">{asset.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      order.type === 'buy'
+                        ? 'bg-[#00B57C]/20 text-[#00B57C]'
+                        : 'bg-[#E71151]/20 text-[#E71151]'
+                    }`}>
+                      {order.type.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {order.quantity} {asset.symbol} @ ${order.targetPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Total Value: ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                
+                <div className="text-right">
+                  <p className="text-sm text-gray-400 mb-1">
+                    Current Price: ${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className={`text-xs ${isPriceReached ? 'text-[#00B57C]' : 'text-gray-500'}`}>
+                    {isPriceReached ? 'Target price reached!' : 'Waiting for target price...'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelOrder(order.id);
+                }}
+                className="mt-2 text-sm text-red-400 hover:text-red-300 transition-colors cursor-pointer relative z-10"
+              >
+                Cancel Order
+              </button>
+            </div>
+          );
+        })}
     </div>
   );
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { GameState, Transaction, Asset, UnlockedFeature, Order } from '../types/game';
 import { initialAssets, INITIAL_CASH, IDLE_INCOME_RATE } from '../data/initialGameData';
 import { loadGameState, saveGameState } from '../lib/firebase/firestore';
+import { ACHIEVEMENTS } from '../data/achievements';
 
 const FEATURES_BY_LEVEL: UnlockedFeature[] = [
   {
@@ -146,6 +147,10 @@ interface GameStore extends GameState {
   createOrder: (order: Omit<Order, 'id'>) => void;
   cancelOrder: (orderId: string) => void;
   checkOrders: () => void;
+  checkAchievements: () => void;
+  claimAchievementReward: (achievementId: string) => void;
+  achievements: any[];
+  boostTokens: number;
 }
 
 const calculateIdleBonus = (level: number, unlockedFeatures: UnlockedFeature[]) => {
@@ -157,7 +162,7 @@ const calculateIdleBonus = (level: number, unlockedFeatures: UnlockedFeature[]) 
     if (feature.type === 'idle_bonus') {
       if (feature.name === 'Idle Bonus +0.5%') {
         bonus += 0.005; // +0.5%
-      } else if (feature.name.includes('Idle Bonus +1%')) {
+      } else if (feature.name === 'Idle Bonus +1%') {
         bonus += 0.01;  // +1%
       }
     }
@@ -166,6 +171,8 @@ const calculateIdleBonus = (level: number, unlockedFeatures: UnlockedFeature[]) 
   // Cap at 25%
   return Math.min(bonus, 0.25);
 };
+
+const generateUniqueId = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const useGameStore = create<GameStore>((set, get) => ({
   portfolio: {
@@ -187,6 +194,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     idleBonus: 0,
     unlockedFeatures: [FEATURES_BY_LEVEL[0]],
   },
+  achievements: [],
+  boostTokens: 0,
 
   createOrder: (order) => {
     set(state => ({
@@ -202,7 +211,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const order = state.orders.find(o => o.id === orderId);
       if (order) {
         const newTransaction: Transaction = {
-          id: Date.now().toString(),
+          id: generateUniqueId(),
           assetId: order.assetId,
           type: order.type,
           quantity: order.quantity,
@@ -222,37 +231,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
   checkOrders: () => {
     const state = get();
     const { orders, assets } = state;
+    let ordersToRemove: string[] = [];
+    let newTransactions: Transaction[] = [];
     
     orders.forEach(order => {
       const asset = assets.find(a => a.id === order.assetId);
       if (!asset) return;
 
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        assetId: order.assetId,
-        type: order.type,
-        quantity: order.quantity,
-        price: asset.currentPrice,
-        timestamp: Date.now(),
-        status: 'filled'
-      };
-
       if (order.type === 'buy' && asset.currentPrice <= order.targetPrice) {
         // Execute buy order
         get().buyAsset(order.assetId, order.quantity);
-        set(state => ({
-          orders: state.orders.filter(o => o.id !== order.id),
-          transactions: [newTransaction, ...state.transactions]
-        }));
+        ordersToRemove.push(order.id);
+        newTransactions.push({
+          id: generateUniqueId(),
+          assetId: order.assetId,
+          type: order.type,
+          quantity: order.quantity,
+          price: asset.currentPrice,
+          timestamp: Date.now(),
+          status: 'filled'
+        });
       } else if (order.type === 'sell' && asset.currentPrice >= order.targetPrice) {
         // Execute sell order
         get().sellAsset(order.assetId, order.quantity);
-        set(state => ({
-          orders: state.orders.filter(o => o.id !== order.id),
-          transactions: [newTransaction, ...state.transactions]
-        }));
+        ordersToRemove.push(order.id);
+        newTransactions.push({
+          id: generateUniqueId(),
+          assetId: order.assetId,
+          type: order.type,
+          quantity: order.quantity,
+          price: asset.currentPrice,
+          timestamp: Date.now(),
+          status: 'filled'
+        });
       }
     });
+
+    if (ordersToRemove.length > 0) {
+      set(state => ({
+        orders: state.orders.filter(o => !ordersToRemove.includes(o.id)),
+        transactions: [...newTransactions, ...state.transactions]
+      }));
+    }
   },
 
   updatePrices: () => {
@@ -304,6 +324,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         lastUpdate: Date.now(),
       };
     });
+    get().checkAchievements();
   },
 
   processIdleIncome: () => {
@@ -321,6 +342,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         cash: state.portfolio.cash + idleIncome,
       },
     }));
+    get().checkAchievements();
   },
 
   setUserId: (userId: string | null) => set({ userId }),
@@ -419,6 +441,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ],
       }
     }));
+    get().checkAchievements();
   },
 
   sellAsset: (assetId: string, quantity: number) => {
@@ -439,21 +462,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       let remainingXP = newXP;
       let nextLevelXP = state.xpStats.xpToNextLevel;
 
-      // Level up logic
       while (remainingXP >= nextLevelXP) {
         newLevel++;
         remainingXP -= nextLevelXP;
         nextLevelXP = calculateXPForLevel(newLevel + 1);
       }
 
-      // Get new features for this level
       const newFeatures = FEATURES_BY_LEVEL.filter(
         feature => 
           feature.levelRequired <= newLevel && 
           !state.xpStats.unlockedFeatures.find(f => f.name === feature.name)
       );
 
-      // Calculate new idle bonus based on all unlocked features
       const allUnlockedFeatures = [...state.xpStats.unlockedFeatures, ...newFeatures];
       const idleBonus = calculateIdleBonus(newLevel, allUnlockedFeatures);
 
@@ -480,5 +500,79 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
       };
     });
-  }
+    get().checkAchievements();
+  },
+
+  checkAchievements: () => {
+    set(state => {
+      const newAchievements = [...state.achievements];
+      let newBoostTokens = state.boostTokens;
+      let achievementsChanged = false;
+
+      ACHIEVEMENTS.forEach(achievement => {
+        const existingProgress = newAchievements.find(a => a.id === achievement.id);
+        
+        if (!existingProgress) {
+          // Initialize achievement progress if it doesn't exist
+          newAchievements.push({
+            id: achievement.id,
+            unlocked: false,
+            rewardClaimed: false
+          });
+          achievementsChanged = true;
+        } else if (!existingProgress.unlocked && achievement.condition(state)) {
+          // Achievement newly unlocked
+          existingProgress.unlocked = true;
+          existingProgress.unlockedAt = Date.now();
+          achievementsChanged = true;
+        }
+      });
+
+      if (achievementsChanged) {
+        const newState = {
+          achievements: newAchievements,
+          boostTokens: newBoostTokens
+        };
+
+        // Save the updated state
+        const userId = get().userId;
+        if (userId) {
+          saveGameState(userId, newState);
+        }
+
+        return newState;
+      }
+      return state;
+    });
+  },
+
+  claimAchievementReward: (achievementId: string) => {
+    set(state => {
+      const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+      const progress = state.achievements.find(a => a.id === achievementId);
+
+      if (!achievement || !progress || !progress.unlocked || progress.rewardClaimed) {
+        return state;
+      }
+
+      const newAchievements = state.achievements.map(a => 
+        a.id === achievementId 
+          ? { ...a, rewardClaimed: true }
+          : a
+      );
+
+      const newState = {
+        achievements: newAchievements,
+        boostTokens: state.boostTokens + achievement.reward
+      };
+
+      // Save the updated state
+      const userId = get().userId;
+      if (userId) {
+        saveGameState(userId, newState);
+      }
+
+      return newState;
+    });
+  },
 })); 

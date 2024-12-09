@@ -13,6 +13,7 @@ import ActiveOrdersModal from './components/ActiveOrdersModal';
 import { useAuthContext } from './contexts/AuthContext';
 import UserAvatar from './components/UserAvatar';
 import AdvancedAnalyticsModal from './components/AdvancedAnalyticsModal';
+import AchievementModal from './components/AchievementModal';
 
 const MotionDiv = motion.div as React.FC<MotionProps & React.HTMLProps<HTMLDivElement>>;
 const MotionSection = motion.section as React.FC<MotionProps & React.HTMLProps<HTMLElement>>;
@@ -32,7 +33,8 @@ export default function Home() {
     isLoading,
     error,
     loadUserGameState,
-    orders
+    orders,
+    boostTokens
   } = useGameStore();
   const [selectedType, setSelectedType] = useState<AssetType>('stock');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -44,6 +46,7 @@ export default function Home() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const [isBuyMenuOpen, setIsBuyMenuOpen] = useState(false);
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -179,6 +182,11 @@ export default function Home() {
   return (
     <>
       {!isAuthenticated && <SignInModal />}
+      <AchievementModal
+        isOpen={showAchievementModal}
+        onClose={() => setShowAchievementModal(false)}
+      />
+
       <main className="container mx-auto px-4 py-8">
         <MotionDiv
           initial={{ opacity: 0, y: 20 }}
@@ -204,18 +212,16 @@ export default function Home() {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
-              {hasOrdersFeature && (
-                <button
-                  onClick={() => setShowActiveOrdersModal(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1C1C1C] px-4 py-2 rounded-lg hover:bg-[#242424] transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span>Active Orders</span>
-                </button>
-              )}
               <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => setShowAchievementModal(true)}
+                  className="flex items-center gap-2 bg-[#1C1C1C] px-4 py-2 rounded-lg hover:bg-[#242424] transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                  </svg>
+                  <span>{boostTokens}</span>
+                </button>
                 <UserAvatar />
                 <div className="flex-1">
                   <XPStats stats={xpStats} />
@@ -389,7 +395,6 @@ export default function Home() {
                                     <button
                                       onClick={() => {
                                         buyAsset(asset.id, 1);
-                                        setIsBuyMenuOpen(false);
                                       }}
                                       className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
                                     >
@@ -399,7 +404,6 @@ export default function Home() {
                                     <button
                                       onClick={() => {
                                         buyAsset(asset.id, 10);
-                                        setIsBuyMenuOpen(false);
                                       }}
                                       className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
                                     >
@@ -411,7 +415,6 @@ export default function Home() {
                                         const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
                                         if (maxQuantity > 0) {
                                           buyAsset(asset.id, maxQuantity);
-                                          setIsBuyMenuOpen(false);
                                         }
                                       }}
                                       className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
@@ -463,9 +466,25 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-[#111111] p-6 rounded-lg flex flex-col h-[600px]"
           >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Portfolio</h2>
-              <p className="text-sm text-gray-400">
+            <div className="flex mt-2 justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold">Portfolio</h2>
+                <span className="text-sm px-2 py-1 rounded bg-[#1C1C1C] text-gray-400">
+                  Assets: {portfolio.assets.length}
+                </span>
+                {hasOrdersFeature && (
+                  <button
+                    onClick={() => setShowActiveOrdersModal(true)}
+                    className="flex items-center gap-2 bg-[#1C1C1C] px-3 py-1 rounded hover:bg-[#242424] transition-colors text-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <span>Active Orders</span>
+                  </button>
+                )}
+              </div>
+              <p className="text-gray-400">
                 Holdings: ${portfolio.assets.reduce((total, holding) => {
                   const asset = assets.find(a => a.id === holding.assetId);
                   return total + (asset?.currentPrice ?? 0) * holding.quantity;

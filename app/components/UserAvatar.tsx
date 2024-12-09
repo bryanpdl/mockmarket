@@ -32,9 +32,9 @@ export default function UserAvatar() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 bg-[#1C1C1C] rounded-full hover:bg-[#242424] transition-colors duration-200"
+        className="flex items-center h-10 gap-2 bg-[#1C1C1C] rounded-full hover:bg-[#242424] transition-colors duration-200"
       >
-        <div className="w-10 h-10 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-[#242424] flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10  sm:w-8 sm:h-8 rounded-full overflow-hidden bg-[#242424] flex items-center justify-center flex-shrink-0">
           {user?.photoURL ? (
             <img
               src={user.photoURL}

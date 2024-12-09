@@ -33,6 +33,8 @@ const initialGameState: GameState = {
     idleBonus: 0,
     unlockedFeatures: [FEATURES_BY_LEVEL[0] as UnlockedFeature],
   },
+  achievements: [],
+  boostTokens: 0
 };
 
 export async function saveGameState(
@@ -55,9 +57,13 @@ export async function saveGameState(
         updatedAt: serverTimestamp()
       });
     } else {
-      // Update existing user document
+      // Get current state and merge with updates
+      const currentData = userDoc.data();
+      const currentGameState = currentData.gameState;
+      
       await updateDoc(userRef, {
         gameState: {
+          ...currentGameState,
           ...gameState,
           lastUpdate: serverTimestamp()
         },

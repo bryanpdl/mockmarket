@@ -57,6 +57,22 @@ export type Order = {
   createdAt: number;
 };
 
+export type Achievement = {
+  id: string;
+  name: string;
+  description: string;
+  condition: (state: GameState) => boolean;
+  reward: number;
+  category: 'profit' | 'level' | 'cash' | 'portfolio' | 'trading';
+};
+
+export type AchievementProgress = {
+  id: string;
+  unlocked: boolean;
+  rewardClaimed: boolean;
+  unlockedAt?: number;
+};
+
 export type GameState = {
   portfolio: Portfolio;
   transactions: Transaction[];
@@ -72,13 +88,6 @@ export type GameState = {
     }[];
   }[];
   orders: Order[];
-};
-
-export type Achievement = {
-  id: string;
-  name: string;
-  description: string;
-  condition: (state: GameState) => boolean;
-  reward: number;
-  unlocked: boolean;
+  achievements: AchievementProgress[];
+  boostTokens: number;
 }; 
