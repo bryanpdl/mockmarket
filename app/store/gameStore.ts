@@ -39,7 +39,91 @@ const FEATURES_BY_LEVEL: UnlockedFeature[] = [
     description: 'Detailed market analysis tools',
     levelRequired: 10,
     type: 'market_insight'
-  }
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 15 idle income boost',
+    levelRequired: 15,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 25 idle income boost',
+    levelRequired: 25,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 35 idle income boost',
+    levelRequired: 35,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 45 idle income boost',
+    levelRequired: 45,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 55 idle income boost',
+    levelRequired: 55,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 65 idle income boost',
+    levelRequired: 65,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 75 idle income boost',
+    levelRequired: 75,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 85 idle income boost',
+    levelRequired: 85,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 95 idle income boost',
+    levelRequired: 95,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 105 idle income boost',
+    levelRequired: 105,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 115 idle income boost',
+    levelRequired: 115,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 125 idle income boost',
+    levelRequired: 125,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 135 idle income boost',
+    levelRequired: 135,
+    type: 'idle_bonus'
+  },
+  {
+    name: 'Idle Bonus +1%',
+    description: 'Level 145 idle income boost',
+    levelRequired: 145,
+    type: 'idle_bonus'
+  },
 ];
 
 const calculateXPForLevel = (level: number) => 1000 + (level - 1) * 1000;
@@ -63,6 +147,25 @@ interface GameStore extends GameState {
   cancelOrder: (orderId: string) => void;
   checkOrders: () => void;
 }
+
+const calculateIdleBonus = (level: number, unlockedFeatures: UnlockedFeature[]) => {
+  // Base idle rate (0.1%)
+  let bonus = IDLE_INCOME_RATE;
+  
+  // Count all idle bonus features
+  unlockedFeatures.forEach(feature => {
+    if (feature.type === 'idle_bonus') {
+      if (feature.name === 'Idle Bonus +0.5%') {
+        bonus += 0.005; // +0.5%
+      } else if (feature.name.includes('Idle Bonus +1%')) {
+        bonus += 0.01;  // +1%
+      }
+    }
+  });
+  
+  // Cap at 25%
+  return Math.min(bonus, 0.25);
+};
 
 export const useGameStore = create<GameStore>((set, get) => ({
   portfolio: {
@@ -94,10 +197,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }));
   },
 
-  cancelOrder: (orderId) => {
-    set(state => ({
-      orders: state.orders.filter(order => order.id !== orderId)
-    }));
+  cancelOrder: (orderId: string) => {
+    set(state => {
+      const order = state.orders.find(o => o.id === orderId);
+      if (order) {
+        const newTransaction: Transaction = {
+          id: Date.now().toString(),
+          assetId: order.assetId,
+          type: order.type,
+          quantity: order.quantity,
+          price: order.targetPrice,
+          timestamp: Date.now(),
+          status: 'cancelled'
+        };
+        return {
+          orders: state.orders.filter(o => o.id !== orderId),
+          transactions: [newTransaction, ...state.transactions]
+        };
+      }
+      return { orders: state.orders.filter(o => o.id !== orderId) };
+    });
   },
 
   checkOrders: () => {
@@ -108,14 +227,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const asset = assets.find(a => a.id === order.assetId);
       if (!asset) return;
 
+      const newTransaction: Transaction = {
+        id: Date.now().toString(),
+        assetId: order.assetId,
+        type: order.type,
+        quantity: order.quantity,
+        price: asset.currentPrice,
+        timestamp: Date.now(),
+        status: 'filled'
+      };
+
       if (order.type === 'buy' && asset.currentPrice <= order.targetPrice) {
         // Execute buy order
         get().buyAsset(order.assetId, order.quantity);
-        get().cancelOrder(order.id);
+        set(state => ({
+          orders: state.orders.filter(o => o.id !== order.id),
+          transactions: [newTransaction, ...state.transactions]
+        }));
       } else if (order.type === 'sell' && asset.currentPrice >= order.targetPrice) {
         // Execute sell order
         get().sellAsset(order.assetId, order.quantity);
-        get().cancelOrder(order.id);
+        set(state => ({
+          orders: state.orders.filter(o => o.id !== order.id),
+          transactions: [newTransaction, ...state.transactions]
+        }));
       }
     });
   },
@@ -204,9 +339,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
           };
         });
 
+        // Recalculate idle bonus based on unlocked features
+        const updatedIdleBonus = calculateIdleBonus(
+          gameState.xpStats?.level || 1,
+          gameState.xpStats?.unlockedFeatures || []
+        );
+
         set({
           ...gameState,
           assets: updatedAssets,
+          xpStats: {
+            ...gameState.xpStats,
+            idleBonus: updatedIdleBonus
+          },
           isLoading: false
         });
       }
@@ -249,14 +394,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (state.portfolio.cash < totalCost) return;
 
     const existingAsset = state.portfolio.assets.find(a => a.assetId === assetId);
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      assetId,
-      type: 'buy',
-      quantity,
-      price: asset.currentPrice,
-      timestamp: Date.now(),
-    };
 
     set(state => ({
       portfolio: {
@@ -280,8 +417,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 averagePrice: asset.currentPrice,
               },
             ],
-      },
-      transactions: [newTransaction, ...state.transactions],
+      }
     }));
   },
 
@@ -297,34 +433,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const profit = totalValue - (existingAsset.averagePrice * quantity);
     const xpGained = calculateXPFromProfit(profit);
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      assetId,
-      type: 'sell',
-      quantity,
-      price: asset.currentPrice,
-      timestamp: Date.now(),
-    };
-
     set(state => {
       const newXP = state.xpStats.currentXP + xpGained;
       let newLevel = state.xpStats.level;
       let remainingXP = newXP;
       let nextLevelXP = state.xpStats.xpToNextLevel;
 
+      // Level up logic
       while (remainingXP >= nextLevelXP) {
         newLevel++;
         remainingXP -= nextLevelXP;
         nextLevelXP = calculateXPForLevel(newLevel + 1);
       }
 
+      // Get new features for this level
       const newFeatures = FEATURES_BY_LEVEL.filter(
         feature => 
           feature.levelRequired <= newLevel && 
           !state.xpStats.unlockedFeatures.find(f => f.name === feature.name)
       );
 
-      const idleBonus = IDLE_INCOME_RATE + Math.min(0.01 * Math.floor(newLevel / 2), 0.05);
+      // Calculate new idle bonus based on all unlocked features
+      const allUnlockedFeatures = [...state.xpStats.unlockedFeatures, ...newFeatures];
+      const idleBonus = calculateIdleBonus(newLevel, allUnlockedFeatures);
 
       return {
         portfolio: {
@@ -340,15 +471,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
             )
             .filter(a => a.quantity > 0),
         },
-        transactions: [newTransaction, ...state.transactions],
         xpStats: {
           level: newLevel,
           currentXP: remainingXP,
           xpToNextLevel: nextLevelXP,
           idleBonus,
-          unlockedFeatures: [...state.xpStats.unlockedFeatures, ...newFeatures],
+          unlockedFeatures: allUnlockedFeatures,
         },
       };
     });
-  },
+  }
 })); 

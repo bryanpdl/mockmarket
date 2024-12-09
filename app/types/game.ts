@@ -30,6 +30,7 @@ export type Transaction = {
   quantity: number;
   price: number;
   timestamp: number;
+  status: 'filled' | 'cancelled';
 };
 
 export type XPStats = {

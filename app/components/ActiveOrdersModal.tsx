@@ -129,6 +129,15 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
                   }`}>
                     {transaction.type.toUpperCase()}
                   </span>
+                  {'status' in transaction && (
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      transaction.status === 'filled'
+                        ? 'bg-[#00B57C]/20 text-[#00B57C]'
+                        : 'bg-[#E71151]/20 text-[#E71151]'
+                    }`}>
+                      {transaction.status === 'filled' ? 'Filled' : 'Cancelled'}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-gray-400">
                   {transaction.quantity} {asset.symbol} @ ${transaction.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

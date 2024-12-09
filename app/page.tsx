@@ -43,6 +43,7 @@ export default function Home() {
   const [selectedAnalyticsAsset, setSelectedAnalyticsAsset] = useState<Asset | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const [isBuyMenuOpen, setIsBuyMenuOpen] = useState(false);
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -360,45 +361,87 @@ export default function Home() {
                         </div>
                       </div>
                       {!isLocked && (
-                        <div className="overflow-hidden transition-all duration-300 ease-in-out h-0 group-hover:h-[240px] sm:group-hover:h-[80px]">
-                          <div className="transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out flex flex-col gap-4 sm:gap-2 pt-4 sm:pt-2">
-                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
-                              <button
-                                onClick={() => buyAsset(asset.id, 1)}
-                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
-                              >
-                                Buy 1 - ${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </button>
-                              <button
-                                onClick={() => buyAsset(asset.id, 10)}
-                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
-                              >
-                                Buy 10 - ${(asset.currentPrice * 10).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
-                                  if (maxQuantity > 0) buyAsset(asset.id, maxQuantity);
-                                }}
-                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
-                              >
-                                Buy {Math.floor(portfolio.cash / asset.currentPrice)} - ${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </button>
-                            </div>
-                            {hasOrdersFeature && (
-                              <div className="flex gap-2">
+                        <div className={`overflow-hidden transition-all duration-300 ease-in-out h-0 ${
+                          isBuyMenuOpen 
+                            ? 'group-hover:h-[240px] sm:group-hover:h-[240px]' 
+                            : 'group-hover:h-[60px] sm:group-hover:h-[60px]'
+                        }`}>
+                          <div className="transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out flex flex-col gap-3 sm:gap-2 pt-3 sm:pt-2 pb-2">
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
                                 <button
-                                  onClick={() => {
-                                    setSelectedAsset(asset);
-                                    setOrderType('buy');
-                                    setShowOrderModal(true);
-                                  }}
-                                  className="bg-[#1C1C1C] w-full sm:w-auto px-4 py-3 sm:py-1 rounded text-sm hover:bg-[#242424] transition-colors text-[#00B57C]"
+                                  onClick={() => setIsBuyMenuOpen(!isBuyMenuOpen)}
+                                  className="w-full bg-[#00B57C] px-4 py-2 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A] flex items-center justify-between"
                                 >
-                                  Buy Order
+                                  <span>Buy {asset.symbol}</span>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className={`h-4 w-4 transition-transform duration-200 ${isBuyMenuOpen ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
                                 </button>
+                                {isBuyMenuOpen && (
+                                  <div className="absolute left-0 right-0 mt-2 bg-[#161616] rounded-lg shadow-lg py-2 z-50">
+                                    <button
+                                      onClick={() => {
+                                        buyAsset(asset.id, 1);
+                                        setIsBuyMenuOpen(false);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
+                                    >
+                                      <span>Buy 1 {asset.symbol}</span>
+                                      <span className="text-gray-400">${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        buyAsset(asset.id, 10);
+                                        setIsBuyMenuOpen(false);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
+                                    >
+                                      <span>Buy 10 {asset.symbol}</span>
+                                      <span className="text-gray-400">${(asset.currentPrice * 10).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
+                                        if (maxQuantity > 0) {
+                                          buyAsset(asset.id, maxQuantity);
+                                          setIsBuyMenuOpen(false);
+                                        }
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
+                                    >
+                                      <span>Buy Max ({Math.floor(portfolio.cash / asset.currentPrice)} {asset.symbol})</span>
+                                      <span className="text-gray-400">${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </button>
+                                    {hasOrdersFeature && (
+                                      <>
+                                        <div className="my-1 border-t border-gray-800"></div>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedAsset(asset);
+                                            setOrderType('buy');
+                                            setShowOrderModal(true);
+                                            setIsBuyMenuOpen(false);
+                                          }}
+                                          className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors text-[#00B57C] flex items-center gap-2"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                          </svg>
+                                          <span>Create Buy Order</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       )}

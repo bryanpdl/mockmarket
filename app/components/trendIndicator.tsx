@@ -92,9 +92,9 @@ export default function TrendIndicator({ priceHistory, volatility }: TrendIndica
         <MotionDiv
           className="w-full rounded-full"
           style={{
-            backgroundColor: volatility <= 0.1 ? '#00B57C' : 
-                           volatility <= 0.2 ? '#FFB800' : '#E71151',
-            height: `${Math.min(100, volatility * 500)}%`
+            backgroundColor: volatility <= 0.2 ? '#00B57C' : 
+                           volatility <= 0.3 ? '#FFB800' : '#E71151',
+            height: `${Math.min(100, volatility * 250)}%`
           }}
         />
       </MotionDiv>
