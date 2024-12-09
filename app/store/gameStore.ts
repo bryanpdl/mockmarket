@@ -126,8 +126,8 @@ const FEATURES_BY_LEVEL: UnlockedFeature[] = [
   },
 ];
 
-const calculateXPForLevel = (level: number) => 1000 + (level - 1) * 1000;
-const calculateXPFromProfit = (profit: number) => Math.max(0, Math.floor(profit * 10));
+const calculateXPForLevel = (level: number) => 500 * level;
+const calculateXPFromProfit = (profit: number) => Math.max(0, Math.floor(profit / 10));
 
 const PRICE_HISTORY_LIMIT = 30; // Keep last 30 seconds of price data
 
