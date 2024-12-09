@@ -171,29 +171,29 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-2xl font-bold mb-1 flex items-center gap-2 text-gray-300">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
+            <div className="w-full md:w-auto">
+              <h1 className="text-2xl font-bold mb-2 flex items-center gap-2 text-gray-300">
                 <span>MockMarket</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
                   <polyline points="16 7 22 7 22 13"></polyline>
                 </svg>
               </h1>
-              <div className="flex items-baseline gap-4">
-                <div className="text-3xl font-bold text-[#00B57C]">
+              <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
+                <div className="text-2xl md:text-3xl font-bold text-[#00B57C]">
                   ${portfolio.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <div className="text-gray-400">
+                <div className="text-sm md:text-base text-gray-400">
                   Total Value: ${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
               {hasOrdersFeature && (
                 <button
                   onClick={() => setShowActiveOrdersModal(true)}
-                  className="flex items-center gap-2 bg-[#1C1C1C] px-4 py-2 rounded-lg hover:bg-[#242424] transition-colors"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1C1C1C] px-4 py-2 rounded-lg hover:bg-[#242424] transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -201,8 +201,12 @@ export default function Home() {
                   <span>Active Orders</span>
                 </button>
               )}
-              <UserAvatar />
-              <XPStats stats={xpStats} />
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <UserAvatar />
+                <div className="flex-1">
+                  <XPStats stats={xpStats} />
+                </div>
+              </div>
             </div>
           </div>
         </MotionDiv>
@@ -212,7 +216,7 @@ export default function Home() {
           <MotionSection
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-[#111111] p-6 rounded-lg flex flex-col h-[600px]"
+            className="bg-[#111111] p-6 rounded-lg flex flex-col h-[600px] sm:h-[600px]"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Market</h2>
@@ -286,18 +290,18 @@ export default function Home() {
                         </div>
                       </div>
                       {!isLocked && (
-                        <div className="overflow-hidden transition-all duration-300 ease-in-out h-0 group-hover:h-[80px]">
-                          <div className="transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out flex flex-col gap-2 pt-2">
-                            <div className="flex gap-2">
+                        <div className="overflow-hidden transition-all duration-300 ease-in-out h-0 group-hover:h-[240px] sm:group-hover:h-[80px]">
+                          <div className="transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out flex flex-col gap-4 sm:gap-2 pt-4 sm:pt-2">
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
                               <button
                                 onClick={() => buyAsset(asset.id, 1)}
-                                className="bg-[#00B57C] px-6 py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
+                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
                               >
                                 Buy 1 - ${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </button>
                               <button
                                 onClick={() => buyAsset(asset.id, 10)}
-                                className="bg-[#00B57C] px-6 py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
+                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
                               >
                                 Buy 10 - ${(asset.currentPrice * 10).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </button>
@@ -306,7 +310,7 @@ export default function Home() {
                                   const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
                                   if (maxQuantity > 0) buyAsset(asset.id, maxQuantity);
                                 }}
-                                className="bg-[#00B57C] px-6 py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
+                                className="bg-[#00B57C] px-6 py-3 sm:py-1 rounded text-sm transition-all duration-200 hover:shadow-[0_0_15px_rgba(0,181,124,0.3)] hover:bg-[#00C98A]"
                               >
                                 Buy {Math.floor(portfolio.cash / asset.currentPrice)} - ${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </button>
@@ -319,7 +323,7 @@ export default function Home() {
                                     setOrderType('buy');
                                     setShowOrderModal(true);
                                   }}
-                                  className="bg-[#1C1C1C] px-4 py-1 rounded text-sm hover:bg-[#242424] transition-colors text-[#00B57C]"
+                                  className="bg-[#1C1C1C] w-full sm:w-auto px-4 py-3 sm:py-1 rounded text-sm hover:bg-[#242424] transition-colors text-[#00B57C]"
                                 >
                                   Buy Order
                                 </button>

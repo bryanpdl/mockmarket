@@ -32,9 +32,9 @@ export default function UserAvatar() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 bg-[#1C1C1C] rounded-full p-1 pr-4 hover:bg-[#242424] transition-colors duration-200"
+        className="flex items-center gap-2 bg-[#1C1C1C] rounded-full hover:bg-[#242424] transition-colors duration-200"
       >
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-[#242424] flex items-center justify-center">
+        <div className="w-10 h-10 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-[#242424] flex items-center justify-center flex-shrink-0">
           {user?.photoURL ? (
             <img
               src={user.photoURL}
@@ -43,7 +43,7 @@ export default function UserAvatar() {
             />
           ) : (
             <svg
-              className="w-5 h-5 text-gray-400"
+              className="w-6 h-6 sm:w-5 sm:h-5 text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -57,7 +57,7 @@ export default function UserAvatar() {
             </svg>
           )}
         </div>
-        <span className="text-sm font-medium">
+        <span className="hidden sm:block text-sm font-medium pr-4">
           {isAnonymous
             ? 'Guest'
             : user?.displayName?.split(' ')[0] || 'User'}
@@ -69,10 +69,10 @@ export default function UserAvatar() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="absolute right-0 mt-2 w-48 bg-[#1C1C1C] rounded-lg shadow-lg py-1 z-50"
+          className="absolute right-0 sm:right-0 mt-2 w-48 bg-[#1C1C1C] rounded-lg shadow-lg py-1 z-50 transform -translate-x-1/2 sm:translate-x-0 left-1/2 sm:left-auto"
         >
-          <div className="px-4 py-2 border-b border-gray-700">
-            <p className="text-sm font-medium">
+          <div className="px-3 py-2 border-b border-gray-700">
+            <p className="text-sm font-medium truncate">
               {isAnonymous
                 ? 'Playing as Guest'
                 : user?.displayName || 'User'}
@@ -83,7 +83,7 @@ export default function UserAvatar() {
           </div>
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#242424] transition-colors duration-200"
+            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#242424] transition-colors duration-200"
           >
             Sign Out
           </button>

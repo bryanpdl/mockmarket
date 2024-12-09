@@ -24,21 +24,21 @@ export default function XPStats({ stats }: XPStatsProps) {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-2 min-w-[200px]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold">Level {stats.level}</span>
-          <span className="text-gray-400 text-sm">
+          <span className="text-lg sm:text-xl font-bold">Level {stats.level}</span>
+          <span className="text-xs sm:text-sm text-gray-400">
             {stats.currentXP.toLocaleString()} / {stats.xpToNextLevel.toLocaleString()} XP
           </span>
         </div>
-        <div className="text-blue-400 text-sm">
+        <div className="text-xs sm:text-sm text-blue-400">
           +{(stats.idleBonus * 100).toFixed(1)}% Idle Bonus
         </div>
       </div>
 
       {/* XP Progress Bar */}
-      <div className="relative h-2 bg-[#1C1C1C] rounded-full overflow-hidden">
+      <div className="relative h-1.5 sm:h-2 bg-[#1C1C1C] rounded-full overflow-hidden">
         <MotionDiv
           className="absolute h-full bg-gradient-to-r from-blue-500 to-purple-500"
           initial={{ width: 0 }}
@@ -49,9 +49,9 @@ export default function XPStats({ stats }: XPStatsProps) {
 
       {/* Latest Unlocked Feature */}
       {stats.unlockedFeatures.length > 0 && (
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-gray-400">Latest unlock:</span>
-          <span className={`text-xs ${getFeatureColor(stats.unlockedFeatures[stats.unlockedFeatures.length - 1].type)}`}>
+        <div className="flex items-center gap-1 mt-1">
+          <span className="text-[10px] sm:text-xs text-gray-400">Latest unlock:</span>
+          <span className={`text-[10px] sm:text-xs ${getFeatureColor(stats.unlockedFeatures[stats.unlockedFeatures.length - 1].type)}`}>
             {stats.unlockedFeatures[stats.unlockedFeatures.length - 1].name}
           </span>
         </div>
