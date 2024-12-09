@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, MotionProps } from 'framer-motion';
 import { useGameStore } from './store/gameStore';
 import { PRICE_UPDATE_INTERVAL, IDLE_INCOME_INTERVAL } from './data/initialGameData';
@@ -41,6 +41,19 @@ export default function Home() {
   const [showActiveOrdersModal, setShowActiveOrdersModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [selectedAnalyticsAsset, setSelectedAnalyticsAsset] = useState<Asset | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Check if market trends feature is unlocked
   const hasTrendFeature = xpStats.unlockedFeatures.some(
@@ -220,10 +233,67 @@ export default function Home() {
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Market</h2>
-              <div className="flex gap-2 bg-[#161616] p-1 rounded-lg">
+              <div className="sm:flex gap-2 bg-[#161616] p-1 rounded-lg hidden">
                 <TabButton type="stock" label="Stocks" />
                 <TabButton type="crypto" label="Crypto" />
                 <TabButton type="commodity" label="Commodities" />
+              </div>
+              <div className="relative sm:hidden" ref={filterRef}>
+                <button
+                  onClick={() => setIsFilterOpen(!isFilterOpen)}
+                  className="flex items-center gap-2 bg-[#161616] px-4 py-2 rounded-lg hover:bg-[#1C1C1C] transition-colors"
+                >
+                  <span className="text-sm">
+                    {selectedType === 'stock' ? 'Stocks' : 
+                     selectedType === 'crypto' ? 'Crypto' : 'Commodities'}
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`h-4 w-4 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {isFilterOpen && (
+                  <div className="absolute right-0 mt-2 w-40 bg-[#161616] rounded-lg shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => {
+                        setSelectedType('stock');
+                        setIsFilterOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors ${
+                        selectedType === 'stock' ? 'text-[#00B57C]' : 'text-gray-400'
+                      }`}
+                    >
+                      Stocks
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType('crypto');
+                        setIsFilterOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors ${
+                        selectedType === 'crypto' ? 'text-[#00B57C]' : 'text-gray-400'
+                      }`}
+                    >
+                      Crypto
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType('commodity');
+                        setIsFilterOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors ${
+                        selectedType === 'commodity' ? 'text-[#00B57C]' : 'text-gray-400'
+                      }`}
+                    >
+                      Commodities
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             
