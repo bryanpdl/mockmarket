@@ -34,7 +34,17 @@ const initialGameState: GameState = {
     unlockedFeatures: [FEATURES_BY_LEVEL[0] as UnlockedFeature],
   },
   achievements: [],
-  boostTokens: 0
+  boostTokens: 0,
+  activeBoosts: []
+};
+
+// Add helper function to clean expired boosts
+const cleanExpiredBoosts = (gameState: Partial<GameState>) => {
+  if (gameState.activeBoosts) {
+    const now = Date.now();
+    gameState.activeBoosts = gameState.activeBoosts.filter(boost => boost.endTime > now);
+  }
+  return gameState;
 };
 
 export async function saveGameState(
@@ -45,12 +55,15 @@ export async function saveGameState(
     const userRef = getUserRef(userId);
     const userDoc = await getDoc(userRef);
 
+    // Clean expired boosts before saving
+    const cleanedGameState = cleanExpiredBoosts(gameState);
+
     if (!userDoc.exists()) {
       // Create new user document with initial state
       await setDoc(userRef, {
         gameState: {
           ...initialGameState,
-          ...gameState,
+          ...cleanedGameState,
           lastUpdate: serverTimestamp()
         },
         createdAt: serverTimestamp(),
@@ -64,7 +77,7 @@ export async function saveGameState(
       await updateDoc(userRef, {
         gameState: {
           ...currentGameState,
-          ...gameState,
+          ...cleanedGameState,
           lastUpdate: serverTimestamp()
         },
         updatedAt: serverTimestamp()
@@ -92,7 +105,8 @@ export async function loadGameState(userId: string): Promise<GameState | null> {
     }
 
     const data = userDoc.data();
-    return data.gameState as GameState;
+    const gameState = data.gameState as GameState;
+    return cleanExpiredBoosts(gameState) as GameState;
   } catch (error) {
     console.error('Error loading game state:', error);
     throw error;

@@ -9,9 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/lodash": "^4.17.13",
     "chart.js": "^4.4.7",
     "firebase": "^11.0.2",
     "framer-motion": "^10.16.4",
+    "lodash": "^4.17.21",
     "next": "15.0.4",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.2.0",

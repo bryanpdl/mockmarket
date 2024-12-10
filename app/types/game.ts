@@ -45,7 +45,7 @@ export type UnlockedFeature = {
   name: string;
   description: string;
   levelRequired: number;
-  type: 'idle_bonus' | 'market_insight' | 'trading_feature';
+  type: 'idle_bonus' | 'market_insight' | 'trading_feature' | 'idle_speed';
 };
 
 export type Order = {
@@ -73,6 +73,21 @@ export type AchievementProgress = {
   unlockedAt?: number;
 };
 
+export type MarketBoost = {
+  id: string;
+  name: string;
+  description: string;
+  duration: number; // in milliseconds
+  cost: number;    // in boost tokens
+  multiplier: number;
+  type: 'idle_speed' | 'idle_income' | 'xp_gain' | 'price_volatility';
+};
+
+export type ActiveBoost = MarketBoost & {
+  startTime: number;
+  endTime: number;
+};
+
 export type GameState = {
   portfolio: Portfolio;
   transactions: Transaction[];
@@ -90,4 +105,5 @@ export type GameState = {
   orders: Order[];
   achievements: AchievementProgress[];
   boostTokens: number;
+  activeBoosts: ActiveBoost[];
 }; 
