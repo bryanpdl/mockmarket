@@ -165,7 +165,7 @@ const FEATURES_BY_LEVEL: UnlockedFeature[] = [
   },
 ];
 
-const calculateXPForLevel = (level: number) => 500 * level;
+const calculateXPForLevel = (level: number) => Math.floor(500 * Math.pow(1.2, level - 1));
 const calculateXPFromProfit = (profit: number) => Math.max(0, Math.floor(profit / 10));
 
 const PRICE_HISTORY_LIMIT = 30; // Keep last 30 seconds of price data
@@ -253,6 +253,20 @@ export const calculateIdleInterval = (unlockedFeatures: UnlockedFeature[]) => {
   return Math.max(BASE_INTERVAL - reduction, MIN_INTERVAL);
 };
 
+// Helper function to fix XP requirements for existing users
+const fixXPRequirements = (state: GameState) => {
+  const currentLevel = state.xpStats.level;
+  const nextLevelXP = calculateXPForLevel(currentLevel + 1);
+  
+  return {
+    ...state,
+    xpStats: {
+      ...state.xpStats,
+      xpToNextLevel: nextLevelXP
+    }
+  };
+};
+
 export const useGameStore = create<GameStore>((set, get) => {
   // Create a debounced save function
   const debouncedSave = debounce((userId: string, state: Partial<GameState>) => {
@@ -328,7 +342,34 @@ export const useGameStore = create<GameStore>((set, get) => {
           // Execute buy order at target price
           const totalCost = order.quantity * order.targetPrice;
           if (state.portfolio.cash >= totalCost) {
-            get().buyAsset(order.assetId, order.quantity);
+            // Instead of using buyAsset, handle the buy directly at target price
+            const existingAsset = state.portfolio.assets.find(a => a.assetId === order.assetId);
+            
+            set(state => ({
+              portfolio: {
+                cash: state.portfolio.cash - totalCost,
+                assets: existingAsset
+                  ? state.portfolio.assets.map(a =>
+                      a.assetId === order.assetId
+                        ? {
+                            ...a,
+                            quantity: a.quantity + order.quantity,
+                            averagePrice:
+                              (a.averagePrice * a.quantity + totalCost) / (a.quantity + order.quantity),
+                          }
+                        : a
+                    )
+                  : [
+                      ...state.portfolio.assets,
+                      {
+                        assetId: order.assetId,
+                        quantity: order.quantity,
+                        averagePrice: order.targetPrice,
+                      },
+                    ],
+              }
+            }));
+
             ordersToRemove.push(order.id);
             newTransactions.push({
               id: generateUniqueId(),
@@ -344,7 +385,65 @@ export const useGameStore = create<GameStore>((set, get) => {
           // Execute sell order at target price
           const holding = state.portfolio.assets.find(a => a.assetId === order.assetId);
           if (holding && holding.quantity >= order.quantity) {
-            get().sellAsset(order.assetId, order.quantity);
+            const totalValue = order.quantity * order.targetPrice;
+            const profit = totalValue - (holding.averagePrice * order.quantity);
+            const xpGained = calculateXPFromProfit(profit);
+
+            set(state => {
+              const newXP = state.xpStats.currentXP + xpGained;
+              let newLevel = state.xpStats.level;
+              let remainingXP = newXP;
+              let nextLevelXP = state.xpStats.xpToNextLevel;
+
+              while (remainingXP >= nextLevelXP) {
+                newLevel++;
+                remainingXP -= nextLevelXP;
+                nextLevelXP = calculateXPForLevel(newLevel + 1);
+              }
+
+              const newFeatures = FEATURES_BY_LEVEL.filter(
+                feature => 
+                  feature.levelRequired <= newLevel && 
+                  !state.xpStats.unlockedFeatures.find(f => f.name === feature.name)
+              );
+
+              const allUnlockedFeatures = [...state.xpStats.unlockedFeatures, ...newFeatures];
+              const idleBonus = calculateIdleBonus(newLevel, allUnlockedFeatures, state.activeBoosts);
+
+              const newState = {
+                portfolio: {
+                  cash: state.portfolio.cash + totalValue,
+                  assets: state.portfolio.assets
+                    .map(a =>
+                      a.assetId === order.assetId
+                        ? {
+                            ...a,
+                            quantity: a.quantity - order.quantity,
+                          }
+                        : a
+                    )
+                    .filter(a => a.quantity > 0),
+                },
+                xpStats: {
+                  level: newLevel,
+                  currentXP: remainingXP,
+                  xpToNextLevel: nextLevelXP,
+                  idleBonus,
+                  unlockedFeatures: allUnlockedFeatures,
+                }
+              };
+
+              // Save state if there are new features or level changed
+              if (newFeatures.length > 0 || newLevel !== state.xpStats.level) {
+                const userId = get().userId;
+                if (userId) {
+                  debouncedSave(userId, newState);
+                }
+              }
+
+              return newState;
+            });
+
             ordersToRemove.push(order.id);
             newTransactions.push({
               id: generateUniqueId(),
@@ -382,7 +481,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           const randomChange = (Math.random() - 0.5) * 2 * asset.volatility * volatilityMultiplier;
           
           const totalChange = randomChange + meanReversionPull;
-          const minPrice = asset.basePrice * 0.2;
+          const minPrice = asset.basePrice * 0.1;
           const maxPrice = asset.basePrice * 10;
           const newPrice = Math.min(maxPrice, Math.max(minPrice, 
             asset.currentPrice * (1 + totalChange)
@@ -466,21 +565,31 @@ export const useGameStore = create<GameStore>((set, get) => {
             };
           });
 
+          // Fix XP requirements for existing users
+          const fixedGameState = fixXPRequirements(gameState);
+
           // Recalculate idle bonus based on unlocked features
           const updatedIdleBonus = calculateIdleBonus(
-            gameState.xpStats?.level || 1,
-            gameState.xpStats?.unlockedFeatures || [],
-            gameState.activeBoosts || []
+            fixedGameState.xpStats?.level || 1,
+            fixedGameState.xpStats?.unlockedFeatures || [],
+            fixedGameState.activeBoosts || []
           );
 
-          set({
-            ...gameState,
+          const newState = {
+            ...fixedGameState,
             assets: updatedAssets,
             xpStats: {
-              ...gameState.xpStats,
+              ...fixedGameState.xpStats,
               idleBonus: updatedIdleBonus
             },
             isLoading: false
+          };
+
+          set(newState);
+
+          // Save the fixed XP requirements
+          debouncedSave(userId, {
+            xpStats: newState.xpStats
           });
         }
       } catch (error) {
@@ -583,7 +692,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         const allUnlockedFeatures = [...state.xpStats.unlockedFeatures, ...newFeatures];
         const idleBonus = calculateIdleBonus(newLevel, allUnlockedFeatures, state.activeBoosts);
 
-        return {
+        const newState = {
           portfolio: {
             cash: state.portfolio.cash + totalValue,
             assets: state.portfolio.assets
@@ -605,6 +714,16 @@ export const useGameStore = create<GameStore>((set, get) => {
             unlockedFeatures: allUnlockedFeatures,
           },
         };
+
+        // Save state if there are new features or level changed
+        if (newFeatures.length > 0 || newLevel !== state.xpStats.level) {
+          const userId = get().userId;
+          if (userId) {
+            debouncedSave(userId, newState);
+          }
+        }
+
+        return newState;
       });
       get().checkAchievements();
     },
