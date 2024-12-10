@@ -317,7 +317,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             quantity: order.quantity,
             price: order.targetPrice,
             timestamp: Date.now(),
-            status: 'cancelled'
+            status: 'filled'
           };
           return {
             orders: state.orders.filter(o => o.id !== orderId),
@@ -332,7 +332,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       const state = get();
       const { orders, assets } = state;
       let ordersToRemove: string[] = [];
-      let newTransactions: Transaction[] = [];
       
       orders.forEach(order => {
         const asset = assets.find(a => a.id === order.assetId);
@@ -342,44 +341,47 @@ export const useGameStore = create<GameStore>((set, get) => {
           // Execute buy order at target price
           const totalCost = order.quantity * order.targetPrice;
           if (state.portfolio.cash >= totalCost) {
-            // Instead of using buyAsset, handle the buy directly at target price
             const existingAsset = state.portfolio.assets.find(a => a.assetId === order.assetId);
             
-            set(state => ({
-              portfolio: {
-                cash: state.portfolio.cash - totalCost,
-                assets: existingAsset
-                  ? state.portfolio.assets.map(a =>
-                      a.assetId === order.assetId
-                        ? {
-                            ...a,
-                            quantity: a.quantity + order.quantity,
-                            averagePrice:
-                              (a.averagePrice * a.quantity + totalCost) / (a.quantity + order.quantity),
-                          }
-                        : a
-                    )
-                  : [
-                      ...state.portfolio.assets,
-                      {
-                        assetId: order.assetId,
-                        quantity: order.quantity,
-                        averagePrice: order.targetPrice,
-                      },
-                    ],
-              }
-            }));
+            set(state => {
+              const newTransaction: Transaction = {
+                id: generateUniqueId(),
+                assetId: order.assetId,
+                type: order.type,
+                quantity: order.quantity,
+                price: order.targetPrice,
+                timestamp: Date.now(),
+                status: 'filled' as const
+              };
+
+              return {
+                portfolio: {
+                  cash: state.portfolio.cash - totalCost,
+                  assets: existingAsset
+                    ? state.portfolio.assets.map(a =>
+                        a.assetId === order.assetId
+                          ? {
+                              ...a,
+                              quantity: a.quantity + order.quantity,
+                              averagePrice:
+                                (a.averagePrice * a.quantity + totalCost) / (a.quantity + order.quantity),
+                            }
+                          : a
+                      )
+                    : [
+                        ...state.portfolio.assets,
+                        {
+                          assetId: order.assetId,
+                          quantity: order.quantity,
+                          averagePrice: order.targetPrice,
+                        },
+                      ],
+                },
+                transactions: [newTransaction, ...state.transactions]
+              };
+            });
 
             ordersToRemove.push(order.id);
-            newTransactions.push({
-              id: generateUniqueId(),
-              assetId: order.assetId,
-              type: order.type,
-              quantity: order.quantity,
-              price: order.targetPrice,
-              timestamp: Date.now(),
-              status: 'filled'
-            });
           }
         } else if (order.type === 'sell' && asset.currentPrice >= order.targetPrice) {
           // Execute sell order at target price
@@ -390,6 +392,16 @@ export const useGameStore = create<GameStore>((set, get) => {
             const xpGained = calculateXPFromProfit(profit);
 
             set(state => {
+              const newTransaction: Transaction = {
+                id: generateUniqueId(),
+                assetId: order.assetId,
+                type: order.type,
+                quantity: order.quantity,
+                price: order.targetPrice,
+                timestamp: Date.now(),
+                status: 'filled' as const
+              };
+
               const newXP = state.xpStats.currentXP + xpGained;
               let newLevel = state.xpStats.level;
               let remainingXP = newXP;
@@ -410,7 +422,7 @@ export const useGameStore = create<GameStore>((set, get) => {
               const allUnlockedFeatures = [...state.xpStats.unlockedFeatures, ...newFeatures];
               const idleBonus = calculateIdleBonus(newLevel, allUnlockedFeatures, state.activeBoosts);
 
-              const newState = {
+              return {
                 portfolio: {
                   cash: state.portfolio.cash + totalValue,
                   assets: state.portfolio.assets
@@ -430,38 +442,19 @@ export const useGameStore = create<GameStore>((set, get) => {
                   xpToNextLevel: nextLevelXP,
                   idleBonus,
                   unlockedFeatures: allUnlockedFeatures,
-                }
+                },
+                transactions: [newTransaction, ...state.transactions]
               };
-
-              // Save state if there are new features or level changed
-              if (newFeatures.length > 0 || newLevel !== state.xpStats.level) {
-                const userId = get().userId;
-                if (userId) {
-                  debouncedSave(userId, newState);
-                }
-              }
-
-              return newState;
             });
 
             ordersToRemove.push(order.id);
-            newTransactions.push({
-              id: generateUniqueId(),
-              assetId: order.assetId,
-              type: order.type,
-              quantity: order.quantity,
-              price: order.targetPrice,
-              timestamp: Date.now(),
-              status: 'filled'
-            });
           }
         }
       });
 
       if (ordersToRemove.length > 0) {
         set(state => ({
-          orders: state.orders.filter(o => !ordersToRemove.includes(o.id)),
-          transactions: [...newTransactions, ...state.transactions]
+          orders: state.orders.filter(o => !ordersToRemove.includes(o.id))
         }));
       }
     },
@@ -601,7 +594,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     saveUserGameState: async (userId: string) => {
       try {
         const state = get();
-        const gameStateToSave = {
+        const gameStateToSave = getSerializableState({
           portfolio: state.portfolio,
           transactions: state.transactions,
           lastUpdate: state.lastUpdate,
@@ -612,8 +605,11 @@ export const useGameStore = create<GameStore>((set, get) => {
             currentPrice,
             priceHistory
           })),
-          orders: state.orders
-        };
+          orders: state.orders,
+          achievements: state.achievements,
+          boostTokens: state.boostTokens,
+          activeBoosts: state.activeBoosts
+        });
 
         await saveGameState(userId, gameStateToSave);
       } catch (error) {
@@ -631,31 +627,51 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (state.portfolio.cash < totalCost) return;
 
       const existingAsset = state.portfolio.assets.find(a => a.assetId === assetId);
+      const newTransaction: Transaction = {
+        id: generateUniqueId(),
+        assetId,
+        type: 'buy',
+        quantity,
+        price: asset.currentPrice,
+        timestamp: Date.now(),
+        status: 'filled'
+      };
 
-      set(state => ({
-        portfolio: {
-          cash: state.portfolio.cash - totalCost,
-          assets: existingAsset
-            ? state.portfolio.assets.map(a =>
-                a.assetId === assetId
-                  ? {
-                      ...a,
-                      quantity: a.quantity + quantity,
-                      averagePrice:
-                        (a.averagePrice * a.quantity + totalCost) / (a.quantity + quantity),
-                    }
-                  : a
-              )
-            : [
-                ...state.portfolio.assets,
-                {
-                  assetId,
-                  quantity,
-                  averagePrice: asset.currentPrice,
-                },
-              ],
+      set(state => {
+        const newState = {
+          portfolio: {
+            cash: state.portfolio.cash - totalCost,
+            assets: existingAsset
+              ? state.portfolio.assets.map(a =>
+                  a.assetId === assetId
+                    ? {
+                        ...a,
+                        quantity: a.quantity + quantity,
+                        averagePrice:
+                          (a.averagePrice * a.quantity + totalCost) / (a.quantity + quantity),
+                      }
+                    : a
+                )
+              : [
+                  ...state.portfolio.assets,
+                  {
+                    assetId,
+                    quantity,
+                    averagePrice: asset.currentPrice,
+                  },
+                ],
+          },
+          transactions: [newTransaction, ...state.transactions]
+        };
+
+        // Save the updated state to Firestore
+        const userId = get().userId;
+        if (userId) {
+          debouncedSave(userId, newState);
         }
-      }));
+
+        return newState;
+      });
       get().checkAchievements();
     },
 
@@ -670,6 +686,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       const totalValue = asset.currentPrice * quantity;
       const profit = totalValue - (existingAsset.averagePrice * quantity);
       const xpGained = calculateXPFromProfit(profit);
+
+      const newTransaction: Transaction = {
+        id: generateUniqueId(),
+        assetId,
+        type: 'sell',
+        quantity,
+        price: asset.currentPrice,
+        timestamp: Date.now(),
+        status: 'filled'
+      };
 
       set(state => {
         const newXP = state.xpStats.currentXP + xpGained;
@@ -713,14 +739,13 @@ export const useGameStore = create<GameStore>((set, get) => {
             idleBonus,
             unlockedFeatures: allUnlockedFeatures,
           },
+          transactions: [newTransaction, ...state.transactions]
         };
 
-        // Save state if there are new features or level changed
-        if (newFeatures.length > 0 || newLevel !== state.xpStats.level) {
-          const userId = get().userId;
-          if (userId) {
-            debouncedSave(userId, newState);
-          }
+        // Save state to Firestore
+        const userId = get().userId;
+        if (userId) {
+          debouncedSave(userId, newState);
         }
 
         return newState;

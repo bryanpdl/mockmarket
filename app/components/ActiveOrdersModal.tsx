@@ -16,8 +16,11 @@ interface ActiveOrdersModalProps {
 
 type TabType = 'active' | 'history';
 
+const ORDERS_PER_PAGE = 20;
+
 export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('active');
+  const [currentPage, setCurrentPage] = useState(1);
   const { orders, assets, cancelOrder, transactions } = useGameStore();
 
   const getAssetDetails = (assetId: string): Asset | undefined => {
@@ -26,7 +29,10 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
 
   const TabButton = ({ tab, label }: { tab: TabType; label: string }) => (
     <button
-      onClick={() => setActiveTab(tab)}
+      onClick={() => {
+        setActiveTab(tab);
+        setCurrentPage(1); // Reset to first page when switching tabs
+      }}
       className={`px-4 py-2 rounded-lg transition-colors ${
         activeTab === tab
           ? 'bg-[#1C1C1C] text-white'
@@ -102,67 +108,111 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
     </div>
   );
 
-  const renderOrderHistory = () => (
-    <div className="space-y-4">
-      {transactions.map((transaction) => {
-        const asset = getAssetDetails(transaction.assetId);
-        if (!asset) return null;
+  const renderOrderHistory = () => {
+    const startIndex = (currentPage - 1) * ORDERS_PER_PAGE;
+    const endIndex = startIndex + ORDERS_PER_PAGE;
+    const totalPages = Math.ceil(transactions.length / ORDERS_PER_PAGE);
+    const paginatedTransactions = transactions.slice(startIndex, endIndex);
 
-        const totalValue = transaction.quantity * transaction.price;
-        const date = new Date(transaction.timestamp);
-        const formattedDate = date.toLocaleDateString();
-        const formattedTime = date.toLocaleTimeString();
+    return (
+      <div className="space-y-4">
+        {paginatedTransactions.map((transaction) => {
+          const asset = getAssetDetails(transaction.assetId);
+          if (!asset) return null;
 
-        return (
-          <div
-            key={transaction.id}
-            className="bg-[#1C1C1C] p-4 rounded-lg relative overflow-hidden group"
-          >
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.02] transition-opacity duration-300" />
-            
-            <div className="flex justify-between items-start relative">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold">{asset.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    transaction.type === 'buy'
-                      ? 'bg-[#00B57C]/20 text-[#00B57C]'
-                      : 'bg-[#E71151]/20 text-[#E71151]'
-                  }`}>
-                    {transaction.type.toUpperCase()}
-                  </span>
-                  {'status' in transaction && (
+          const totalValue = transaction.quantity * transaction.price;
+          const date = new Date(transaction.timestamp);
+          const formattedDate = date.toLocaleDateString();
+          const formattedTime = date.toLocaleTimeString();
+
+          return (
+            <div
+              key={transaction.id}
+              className="bg-[#1C1C1C] p-4 rounded-lg relative overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.02] transition-opacity duration-300" />
+              
+              <div className="flex justify-between items-start relative">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold">{asset.name}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded ${
-                      transaction.status === 'filled'
+                      transaction.type === 'buy'
                         ? 'bg-[#00B57C]/20 text-[#00B57C]'
                         : 'bg-[#E71151]/20 text-[#E71151]'
                     }`}>
-                      {transaction.status === 'filled' ? 'Filled' : 'Cancelled'}
+                      {transaction.type.toUpperCase()}
                     </span>
-                  )}
+                    {'status' in transaction && (
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        transaction.status === 'filled'
+                          ? 'bg-[#00B57C]/20 text-[#00B57C]'
+                          : 'bg-[#E71151]/20 text-[#E71151]'
+                      }`}>
+                        {transaction.status === 'filled' ? 'Filled' : 'Cancelled'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {transaction.quantity} {asset.symbol} @ ${transaction.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Total Value: ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-400">
-                  {transaction.quantity} {asset.symbol} @ ${transaction.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Total Value: ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              
-              <div className="text-right">
-                <p className="text-sm text-gray-400">
-                  {formattedDate}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formattedTime}
-                </p>
+
+                <div className="text-right">
+                  <p className="text-sm text-gray-400">
+                    {formattedDate}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formattedTime}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderPaginationControls = () => {
+    const totalPages = Math.ceil(transactions.length / ORDERS_PER_PAGE);
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center items-center gap-2 py-4 border-t border-gray-800">
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          disabled={currentPage === 1}
+          className={`px-3 py-1 rounded text-sm transition-colors ${
+            currentPage === 1
+              ? 'bg-[#1C1C1C] text-gray-500 cursor-not-allowed'
+              : 'bg-[#1C1C1C] text-white hover:bg-[#242424]'
+          }`}
+        >
+          Previous
+        </button>
+        
+        <span className="text-sm text-gray-400">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          disabled={currentPage === totalPages}
+          className={`px-3 py-1 rounded text-sm transition-colors ${
+            currentPage === totalPages
+              ? 'bg-[#1C1C1C] text-gray-500 cursor-not-allowed'
+              : 'bg-[#1C1C1C] text-white hover:bg-[#242424]'
+          }`}
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -182,27 +232,29 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="relative bg-[#161616] p-6 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+            className="relative bg-[#161616] rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
           >
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-bold">Orders</h2>
-                <div className="flex gap-2 bg-[#111111] p-1 rounded-lg">
-                  <TabButton tab="active" label="Active Orders" />
-                  <TabButton tab="history" label="Order History" />
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-2xl font-bold">Orders</h2>
+                  <div className="flex gap-2 bg-[#111111] p-1 rounded-lg">
+                    <TabButton tab="active" label="Active Orders" />
+                    <TabButton tab="history" label="Order History" />
+                  </div>
                 </div>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-[300px]">
               {activeTab === 'active' ? (
                 orders.length === 0 ? (
                   <div className="text-center text-gray-400 py-8">
@@ -221,6 +273,9 @@ export default function ActiveOrdersModal({ isOpen, onClose }: ActiveOrdersModal
                 )
               )}
             </div>
+
+            {/* Fixed pagination controls */}
+            {activeTab === 'history' && renderPaginationControls()}
           </MotionDiv>
         </div>
       )}
