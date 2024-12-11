@@ -319,8 +319,8 @@ export default function Home() {
               {filteredAssets.map((asset) => {
                 const priceChange = ((asset.currentPrice - asset.basePrice) / asset.basePrice) * 100;
                 const volatilityText = 
-                  asset.volatility <= 0.08 ? "Low Risk" :
-                  asset.volatility <= 0.15 ? "Medium Risk" : "High Risk";
+                  asset.volatility <= 0.20 ? "Low Risk" :
+                  asset.volatility <= 0.30 ? "Medium Risk" : "High Risk";
                 
                 const isLocked = totalPortfolioValue < asset.unlockPrice;
                 
@@ -403,53 +403,81 @@ export default function Home() {
                                 </button>
                                 {isBuyMenuOpen && (
                                   <div className="absolute left-0 right-0 mt-2 bg-[#161616] rounded-lg shadow-lg py-2 z-50">
-                                    <button
-                                      onClick={() => {
-                                        buyAsset(asset.id, 1);
-                                      }}
-                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
-                                    >
-                                      <span>Buy 1 {asset.symbol}</span>
-                                      <span className="text-gray-400">${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        buyAsset(asset.id, 10);
-                                      }}
-                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
-                                    >
-                                      <span>Buy 10 {asset.symbol}</span>
-                                      <span className="text-gray-400">${(asset.currentPrice * 10).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
-                                        if (maxQuantity > 0) {
-                                          buyAsset(asset.id, maxQuantity);
-                                        }
-                                      }}
-                                      className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center"
-                                    >
-                                      <span>Buy Max ({Math.floor(portfolio.cash / asset.currentPrice)} {asset.symbol})</span>
-                                      <span className="text-gray-400">${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </button>
+                                    <div className="grid grid-cols-3 gap-1 px-2 mb-2">
+                                      <button
+                                        onClick={() => {
+                                          buyAsset(asset.id, 1);
+                                        }}
+                                        className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
+                                      >
+                                        <span>Buy 1</span>
+                                        <span className="text-gray-400 text-xs">${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          buyAsset(asset.id, 10);
+                                        }}
+                                        className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
+                                      >
+                                        <span>Buy 10</span>
+                                        <span className="text-gray-400 text-xs">${(10 * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          buyAsset(asset.id, 100);
+                                        }}
+                                        className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
+                                      >
+                                        <span>Buy 100</span>
+                                        <span className="text-gray-400 text-xs">${(100 * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </button>
+                                    </div>
+                                    <div className="px-2">
+                                      <button
+                                        onClick={() => {
+                                          const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
+                                          const halfMaxQuantity = Math.floor(maxQuantity / 2);
+                                          if (halfMaxQuantity > 0) {
+                                            buyAsset(asset.id, halfMaxQuantity);
+                                          }
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center rounded"
+                                      >
+                                        <span>Buy 50% ({Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2)} {asset.symbol})</span>
+                                        <span className="text-gray-400">${(Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const maxQuantity = Math.floor(portfolio.cash / asset.currentPrice);
+                                          if (maxQuantity > 0) {
+                                            buyAsset(asset.id, maxQuantity);
+                                          }
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center rounded"
+                                      >
+                                        <span>Buy Max ({Math.floor(portfolio.cash / asset.currentPrice)} {asset.symbol})</span>
+                                        <span className="text-gray-400">${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </button>
+                                    </div>
                                     {hasOrdersFeature && (
                                       <>
                                         <div className="my-1 border-t border-gray-800"></div>
-                                        <button
-                                          onClick={() => {
-                                            setSelectedAsset(asset);
-                                            setOrderType('buy');
-                                            setShowOrderModal(true);
-                                            setIsBuyMenuOpen(false);
-                                          }}
-                                          className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors text-[#00B57C] flex items-center gap-2"
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                          </svg>
-                                          <span>Create Buy Order</span>
-                                        </button>
+                                        <div className="px-1">
+                                          <button
+                                            onClick={() => {
+                                              setSelectedAsset(asset);
+                                              setOrderType('buy');
+                                              setShowOrderModal(true);
+                                              setIsBuyMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors text-[#00B57C] flex items-center gap-2 rounded"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            <span>Create Buy Order</span>
+                                          </button>
+                                        </div>
                                       </>
                                     )}
                                   </div>

@@ -470,12 +470,27 @@ export const useGameStore = create<GameStore>((set, get) => {
           const priceDeviation = (asset.currentPrice - asset.basePrice) / asset.basePrice;
           const meanReversionPull = -priceDeviation * meanReversionStrength;
 
-          // Apply volatility boost to random changes
-          const randomChange = (Math.random() - 0.5) * 2 * asset.volatility * volatilityMultiplier;
+          // Add a rare chance (0.1%) for a significant price movement
+          const isSignificantMove = Math.random() < 0.001;
           
-          const totalChange = randomChange + meanReversionPull;
-          const minPrice = asset.basePrice * 0.1;
-          const maxPrice = asset.basePrice * 10;
+          let totalChange;
+          if (isSignificantMove) {
+            // Generate a strong upward movement that could potentially reach max price
+            const maxPriceRatio = 10; // maximum price is 10x base price
+            const currentRatio = asset.currentPrice / asset.basePrice;
+            const remainingRatio = maxPriceRatio - currentRatio;
+            
+            // Calculate a random portion (50-100%) of the remaining distance to max price
+            const movePercentage = 0.5 + (Math.random() * 0.5);
+            totalChange = (remainingRatio * movePercentage) * (asset.currentPrice / asset.basePrice);
+          } else {
+            // Normal price movement
+            const randomChange = (Math.random() - 0.5) * 2 * asset.volatility * volatilityMultiplier;
+            totalChange = randomChange + meanReversionPull;
+          }
+
+          const minPrice = asset.basePrice * 0.1;  // 10% of base price
+          const maxPrice = asset.basePrice * 10;   // 1000% of base price
           const newPrice = Math.min(maxPrice, Math.max(minPrice, 
             asset.currentPrice * (1 + totalChange)
           ));
@@ -493,21 +508,11 @@ export const useGameStore = create<GameStore>((set, get) => {
           };
         });
 
-        if (currentBoosts.length !== state.activeBoosts.length) {
-          return {
-            assets: newAssets,
-            lastUpdate: Date.now(),
-            activeBoosts: currentBoosts
-          };
-        }
-
         return {
           assets: newAssets,
-          lastUpdate: Date.now(),
+          lastUpdate: Date.now()
         };
       });
-      get().checkOrders();
-      get().checkAchievements();
     },
 
     processIdleIncome: () => {

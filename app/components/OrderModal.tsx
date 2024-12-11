@@ -19,7 +19,7 @@ interface OrderModalProps {
 
 export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalProps) {
   const [quantity, setQuantity] = useState('1');
-  const [targetPrice, setTargetPrice] = useState(asset.currentPrice.toString());
+  const [targetPrice, setTargetPrice] = useState(asset.currentPrice.toFixed(2));
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const { createOrder, portfolio, orders } = useGameStore();
@@ -106,6 +106,23 @@ export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalP
     onClose();
   };
 
+  // Add handler for target price changes
+  const handleTargetPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow typing by setting the raw value
+    setTargetPrice(value);
+  };
+
+  // Format to 2 decimal places on blur
+  const handleTargetPriceBlur = () => {
+    const parsed = parseFloat(targetPrice);
+    if (!isNaN(parsed)) {
+      setTargetPrice(parsed.toFixed(2));
+    } else {
+      setTargetPrice('0.00');
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -174,7 +191,8 @@ export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalP
                   step="0.01"
                   min="0.01"
                   value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
+                  onChange={handleTargetPriceChange}
+                  onBlur={handleTargetPriceBlur}
                   className="w-full bg-[#1C1C1C] border border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-[#00B57C]"
                 />
               </div>
