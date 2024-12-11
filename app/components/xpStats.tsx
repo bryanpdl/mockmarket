@@ -1,5 +1,6 @@
 import { motion, MotionProps } from 'framer-motion';
 import { XPStats as XPStatsType, UnlockedFeature } from '../types/game';
+import { formatLargeNumber } from '../lib/utils';
 
 interface XPStatsProps {
   stats: XPStatsType;
@@ -29,7 +30,7 @@ export default function XPStats({ stats }: XPStatsProps) {
         <div className="flex items-center gap-2">
           <span className="text-lg sm:text-xl font-bold">Level {stats.level}</span>
           <span className="text-xs sm:text-sm text-gray-400">
-            {stats.currentXP.toLocaleString()} / {stats.xpToNextLevel.toLocaleString()} XP
+            {formatLargeNumber(stats.currentXP)} / {formatLargeNumber(stats.xpToNextLevel)} XP
           </span>
         </div>
         <div className="text-xs sm:text-sm text-blue-400">

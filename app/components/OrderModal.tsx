@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { Asset } from '../types/game';
 import { useGameStore } from '../store/gameStore';
 import Toast from './Toast';
+import { formatLargeNumber } from '../lib/utils';
 
 const MotionDiv = motion.div as React.ComponentType<React.HTMLAttributes<HTMLDivElement> & { 
   initial?: any;
@@ -17,12 +18,15 @@ interface OrderModalProps {
   type: 'buy' | 'sell';
 }
 
-export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalProps) {
+export default function OrderModal({ isOpen, onClose, asset: initialAsset, type }: OrderModalProps) {
   const [quantity, setQuantity] = useState('1');
-  const [targetPrice, setTargetPrice] = useState(asset.currentPrice.toFixed(2));
+  const [targetPrice, setTargetPrice] = useState(initialAsset.currentPrice.toFixed(2));
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const { createOrder, portfolio, orders } = useGameStore();
+  const { createOrder, portfolio, orders, assets } = useGameStore();
+
+  // Get real-time asset data from the store
+  const asset = assets.find(a => a.id === initialAsset.id) || initialAsset;
 
   const totalValue = useMemo(() => {
     const qty = parseInt(quantity) || 0;
@@ -143,14 +147,17 @@ export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalP
             exit={{ scale: 0.95, opacity: 0 }}
             className="relative bg-[#161616] p-6 rounded-lg w-full max-w-md"
           >
-            <h2 className="text-xl font-bold mb-4">
-              {type === 'buy' ? 'Place Buy Order' : 'Place Sell Order'}
+            <h2 className="text-xl font-bold mb-1">
+              {type === 'buy' ? 'Buy Order' : 'Sell Order'}
             </h2>
+            <p className="text-gray-400 text-sm mb-4">
+              for <span className="font-bold">{asset.name}</span>
+            </p>
             
             <div className="mb-4">
               <div className="flex justify-between text-sm text-gray-400 mb-1">
                 <span>Current Price:</span>
-                <span>${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>${formatLargeNumber(asset.currentPrice)}</span>
               </div>
               {type === 'sell' && lockedQuantity > 0 && (
                 <div className="text-sm text-[#E71151] mt-1">
@@ -200,7 +207,7 @@ export default function OrderModal({ isOpen, onClose, asset, type }: OrderModalP
               <div className="flex justify-between text-sm text-gray-400 mb-1">
                 <span>Total Value:</span>
                 <span className={`font-bold ${type === 'buy' ? 'text-[#00B57C]' : 'text-[#E71151]'}`}>
-                  ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${formatLargeNumber(totalValue)}
                 </span>
               </div>
 

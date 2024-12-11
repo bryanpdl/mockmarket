@@ -2,15 +2,8 @@ import { db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc, DocumentReference, serverTimestamp } from 'firebase/firestore';
 import { GameState, UnlockedFeature } from '../../types/game';
 import { initialAssets, INITIAL_CASH } from '../../data/initialGameData';
-
-const FEATURES_BY_LEVEL = [
-  {
-    name: 'Basic Trading',
-    description: 'Access to basic buy/sell operations',
-    levelRequired: 1,
-    type: 'trading_feature'
-  }
-];
+import { auth } from '../firebase';
+import { FEATURES_BY_LEVEL } from '../../data/features';
 
 const initialGameState: GameState = {
   portfolio: {
@@ -47,6 +40,25 @@ const cleanExpiredBoosts = (gameState: Partial<GameState>) => {
   return gameState;
 };
 
+// Add validation helper at the top
+const validateGameState = (gameState: Partial<GameState>): Partial<GameState> => {
+  const validated = { ...gameState };
+  
+  // Validate assets if present
+  if (validated.assets) {
+    validated.assets = validated.assets.map(asset => ({
+      ...asset,
+      currentPrice: isNaN(asset.currentPrice) ? initialAssets.find(a => a.id === asset.id)?.basePrice || 0 : asset.currentPrice,
+      priceHistory: asset.priceHistory?.map(ph => ({
+        price: isNaN(ph.price) ? initialAssets.find(a => a.id === asset.id)?.basePrice || 0 : ph.price,
+        timestamp: ph.timestamp
+      })) || []
+    }));
+  }
+
+  return validated;
+};
+
 export async function saveGameState(
   userId: string, 
   gameState: Partial<GameState>
@@ -55,15 +67,25 @@ export async function saveGameState(
     const userRef = getUserRef(userId);
     const userDoc = await getDoc(userRef);
 
-    // Clean expired boosts before saving
+    // Clean expired boosts and validate state before saving
     const cleanedGameState = cleanExpiredBoosts(gameState);
+    const validatedGameState = validateGameState(cleanedGameState);
 
     if (!userDoc.exists()) {
-      // Create new user document with initial state
+      // Create new user document with initial state and profile
+      const user = auth.currentUser;
       await setDoc(userRef, {
+        profile: {
+          displayName: user?.displayName || 'Guest',
+          email: user?.email || 'anonymous',
+          photoURL: user?.photoURL || null,
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+          isAnonymous: user?.isAnonymous || false
+        },
         gameState: {
           ...initialGameState,
-          ...cleanedGameState,
+          ...validatedGameState,
           lastUpdate: serverTimestamp()
         },
         createdAt: serverTimestamp(),
@@ -72,12 +94,12 @@ export async function saveGameState(
     } else {
       // Get current state and merge with updates
       const currentData = userDoc.data();
-      const currentGameState = currentData.gameState;
+      const currentGameState = validateGameState(currentData.gameState);
       
       await updateDoc(userRef, {
         gameState: {
           ...currentGameState,
-          ...cleanedGameState,
+          ...validatedGameState,
           lastUpdate: serverTimestamp()
         },
         updatedAt: serverTimestamp()
@@ -95,10 +117,18 @@ export async function loadGameState(userId: string): Promise<GameState | null> {
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
-      // Initialize new user with default game state
+      // Initialize new user with default game state and profile
+      const user = auth.currentUser;
       await setDoc(userRef, {
+        profile: {
+          displayName: user?.displayName || 'Guest',
+          email: user?.email || 'anonymous',
+          photoURL: user?.photoURL || null,
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+          isAnonymous: user?.isAnonymous || false
+        },
         gameState: initialGameState,
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       return initialGameState;
@@ -106,7 +136,19 @@ export async function loadGameState(userId: string): Promise<GameState | null> {
 
     const data = userDoc.data();
     const gameState = data.gameState as GameState;
-    return cleanExpiredBoosts(gameState) as GameState;
+    
+    // Validate and fix any corrupted data on load
+    const validatedGameState = validateGameState(gameState) as GameState;
+    
+    // If we had to fix any data, save it back
+    if (JSON.stringify(gameState) !== JSON.stringify(validatedGameState)) {
+      await updateDoc(userRef, {
+        gameState: validatedGameState,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    return cleanExpiredBoosts(validatedGameState) as GameState;
   } catch (error) {
     console.error('Error loading game state:', error);
     throw error;

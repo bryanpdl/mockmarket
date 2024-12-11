@@ -24,7 +24,6 @@ export function useAuth() {
           lastLoginAt: serverTimestamp(),
           isAnonymous: user.isAnonymous
         },
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
     } else {

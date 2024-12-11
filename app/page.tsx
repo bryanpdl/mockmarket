@@ -15,6 +15,8 @@ import UserAvatar from './components/UserAvatar';
 import AdvancedAnalyticsModal from './components/AdvancedAnalyticsModal';
 import AchievementModal from './components/AchievementModal';
 import BoostButton from './components/BoostButton';
+import MarketTickIndicator from './components/MarketTickIndicator';
+import { formatLargeNumber } from './lib/utils';
 
 const MotionDiv = motion.div as React.FC<MotionProps & React.HTMLProps<HTMLDivElement>>;
 const MotionSection = motion.section as React.FC<MotionProps & React.HTMLProps<HTMLElement>>;
@@ -36,7 +38,8 @@ export default function Home() {
     loadUserGameState,
     orders,
     boostTokens,
-    forceSave
+    forceSave,
+    checkOrders
   } = useGameStore();
   const [selectedType, setSelectedType] = useState<AssetType>('stock');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -84,7 +87,10 @@ export default function Home() {
   }, [user?.uid, loadUserGameState]);
 
   useEffect(() => {
-    const priceInterval = setInterval(updatePrices, PRICE_UPDATE_INTERVAL);
+    const priceInterval = setInterval(() => {
+      updatePrices();
+      checkOrders();
+    }, PRICE_UPDATE_INTERVAL);
     const currentIdleInterval = calculateIdleInterval(xpStats.unlockedFeatures);
     const idleInterval = setInterval(processIdleIncome, currentIdleInterval);
 
@@ -92,7 +98,7 @@ export default function Home() {
       clearInterval(priceInterval);
       clearInterval(idleInterval);
     };
-  }, [updatePrices, processIdleIncome, xpStats.unlockedFeatures]);
+  }, [updatePrices, processIdleIncome, xpStats.unlockedFeatures, checkOrders]);
 
   // Auto-save game state periodically
   useEffect(() => {
@@ -113,10 +119,14 @@ export default function Home() {
     };
   }, [forceSave]);
 
+  // Calculate total portfolio value (assets only, excluding cash)
   const totalPortfolioValue = portfolio.assets.reduce((total, holding) => {
     const asset = assets.find(a => a.id === holding.assetId);
     return total + (asset?.currentPrice ?? 0) * holding.quantity;
-  }, 0) + portfolio.cash;
+  }, 0);
+
+  // Calculate total value (cash + portfolio)
+  const totalValue = totalPortfolioValue + portfolio.cash;
 
   const filteredAssets = assets.filter(asset => asset.type === selectedType);
 
@@ -207,18 +217,21 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
             <div className="w-full md:w-auto">
               <h1 className="text-2xl font-bold mb-2 flex items-center gap-2 text-gray-300">
-                <span>MockMarket</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-                  <polyline points="16 7 22 7 22 13"></polyline>
-                </svg>
+                <div className="flex items-center">
+                  <span>MockMarket</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                    <polyline points="16 7 22 7 22 13"></polyline>
+                  </svg>
+                  <MarketTickIndicator />
+                </div>
               </h1>
               <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
                 <div className="text-2xl md:text-3xl font-bold text-[#00B57C]">
-                  ${portfolio.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${formatLargeNumber(portfolio.cash)}
                 </div>
                 <div className="text-sm md:text-base text-gray-400">
-                  Total Value: ${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Total Value: ${formatLargeNumber(totalValue)}
                 </div>
               </div>
             </div>
@@ -370,7 +383,7 @@ export default function Home() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold group-hover:text-white transition-colors duration-200">
-                            ${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${formatLargeNumber(asset.currentPrice)}
                           </p>
                           <p className={`text-sm ${priceChange >= 0 ? 'text-[#00B57C]' : 'text-red-400'}`}>
                             {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
@@ -411,7 +424,7 @@ export default function Home() {
                                         className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
                                       >
                                         <span>Buy 1</span>
-                                        <span className="text-gray-400 text-xs">${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span className="text-gray-400 text-xs">${formatLargeNumber(asset.currentPrice)}</span>
                                       </button>
                                       <button
                                         onClick={() => {
@@ -420,7 +433,7 @@ export default function Home() {
                                         className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
                                       >
                                         <span>Buy 10</span>
-                                        <span className="text-gray-400 text-xs">${(10 * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span className="text-gray-400 text-xs">${formatLargeNumber(10 * asset.currentPrice)}</span>
                                       </button>
                                       <button
                                         onClick={() => {
@@ -429,7 +442,7 @@ export default function Home() {
                                         className="text-center px-2 py-2 text-sm bg-[#1C1C1C] hover:bg-[#242424] transition-colors rounded flex flex-col items-center"
                                       >
                                         <span>Buy 100</span>
-                                        <span className="text-gray-400 text-xs">${(100 * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span className="text-gray-400 text-xs">${formatLargeNumber(100 * asset.currentPrice)}</span>
                                       </button>
                                     </div>
                                     <div className="px-2">
@@ -443,8 +456,8 @@ export default function Home() {
                                         }}
                                         className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center rounded"
                                       >
-                                        <span>Buy 50% ({Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2)} {asset.symbol})</span>
-                                        <span className="text-gray-400">${(Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span>Buy 50% ({formatLargeNumber(Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2))} {asset.symbol})</span>
+                                        <span className="text-gray-400">${formatLargeNumber(Math.floor(Math.floor(portfolio.cash / asset.currentPrice) / 2) * asset.currentPrice)}</span>
                                       </button>
                                       <button
                                         onClick={() => {
@@ -455,8 +468,8 @@ export default function Home() {
                                         }}
                                         className="w-full text-left px-4 py-2 text-sm hover:bg-[#1C1C1C] transition-colors flex justify-between items-center rounded"
                                       >
-                                        <span>Buy Max ({Math.floor(portfolio.cash / asset.currentPrice)} {asset.symbol})</span>
-                                        <span className="text-gray-400">${(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span>Buy Max ({formatLargeNumber(Math.floor(portfolio.cash / asset.currentPrice))} {asset.symbol})</span>
+                                        <span className="text-gray-400">${formatLargeNumber(Math.floor(portfolio.cash / asset.currentPrice) * asset.currentPrice)}</span>
                                       </button>
                                     </div>
                                     {hasOrdersFeature && (
@@ -523,12 +536,9 @@ export default function Home() {
                   </button>
                 )}
               </div>
-              <p className="text-gray-400">
-                Holdings: ${portfolio.assets.reduce((total, holding) => {
-                  const asset = assets.find(a => a.id === holding.assetId);
-                  return total + (asset?.currentPrice ?? 0) * holding.quantity;
-                }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
+              <div className="flex items-center gap-2 text-gray-400">
+                <span>Holdings: ${formatLargeNumber(totalPortfolioValue)}</span>
+              </div>
             </div>
             <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
               {portfolio.assets.map((holding) => {
@@ -563,26 +573,26 @@ export default function Home() {
                         <div>
                           <h3 className="font-bold mb-2 group-hover:text-white transition-colors duration-200">{asset.name}</h3>
                           <p className="text-sm text-gray-400">
-                            {holding.quantity} {asset.symbol}
+                            {formatLargeNumber(holding.quantity)} {asset.symbol}
                             {lockedQuantity > 0 && (
                               <span className="text-[#E71151] ml-2">
-                                ({lockedQuantity} locked)
+                                ({formatLargeNumber(lockedQuantity)} locked)
                               </span>
                             )}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Avg: ${holding.averagePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Avg: ${formatLargeNumber(holding.averagePrice)}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="font-bold group-hover:text-white transition-colors duration-200">
-                            ${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ${formatLargeNumber(currentValue)}
                           </p>
                           <p className={`text-sm ${profit >= 0 ? 'text-[#00B57C]' : 'text-red-400'}`}>
-                            {profit >= 0 ? '+' : ''}{profitPercentage.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                            {profit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
                           </p>
                           <p className="text-xs text-gray-500">
-                            P/L: ${profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            P/L: ${formatLargeNumber(profit)}
                           </p>
                         </div>
                       </div>
